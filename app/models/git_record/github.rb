@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 module GitRecord
-  class Remote < Base
+  class Github < Base
     define_model_callbacks :create, :update, :destroy, :initialize
 
     def initialize(attributes = {})
@@ -80,7 +80,7 @@ module GitRecord
     protected
 
     def self.repo
-      GitRecord.config.github.repo
+      GitRecord.configuration.github.repo
     end
   end
 end
