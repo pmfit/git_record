@@ -12,6 +12,10 @@ module GitRecord
       attribute :description, :string
       attribute :_payload, :hash, default: {}
 
+      validates_presence_of :id
+      validates_presence_of :name
+      validates_presence_of :full_name
+
       def initialize(**payload)
         attributes = payload.reject{ |k,v| !Repository.attribute_names.include?(k.to_s) }
 
@@ -23,7 +27,7 @@ module GitRecord
       def self.find(full_name)        
         payload = self.client.get("/repos/#{full_name}")
 
-        new(**payload)
+        new(**payload.parsed_response)
       end
 
       def contents(path, branch: nil)

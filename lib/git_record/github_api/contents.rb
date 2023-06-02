@@ -16,6 +16,7 @@ module GitRecord
         response = self.client.get(url)
         payloads = response.parsed_response.is_a?(Array) ? response.parsed_response : [response.parsed_response]
 
+
         entities = payloads.map do |payload|
           case payload["type"]
           when "dir"

@@ -58,7 +58,7 @@ module GitRecord
 
       def handle_response(response)
         unless response.success?
-          raise StandardError, response.to_s
+          raise StandardError, response["message"]
         end
 
         response

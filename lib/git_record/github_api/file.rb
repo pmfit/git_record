@@ -10,11 +10,14 @@ module GitRecord
       attribute :sha, :string
       attribute :name, :string
       attribute :path, :string
-      attribute :content, :string
-      attribute :url, :string
       
+      attribute :url, :string
       attribute :repo_full_name, :string
       attribute :_payload, :hash
+
+      validates_presence_of :sha
+      validates_presence_of :name
+      validates_presence_of :path
 
       def initialize(**payload)
         attributes = payload.reject{ |k,v| !File.attribute_names.include?(k.to_s) }
@@ -22,6 +25,8 @@ module GitRecord
         super(attributes)
 
         self._payload = payload
+
+        @content = payload[:content]
       end
 
       def self.create(path, repo_full_name, contents, branch: nil)
@@ -59,6 +64,16 @@ module GitRecord
         response_payload = self.class.client.put(url, JSON.generate(payload))
         
         self.class.new(**response_payload)
+      end
+
+      def content
+       return @content if @content.present?
+
+       full_file = self.find(path, repo_full_name)
+
+       @content = full_file.content
+
+       @content
       end
 
       def raw_content
