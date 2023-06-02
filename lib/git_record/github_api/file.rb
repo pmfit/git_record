@@ -48,7 +48,16 @@ module GitRecord
       def self.find(path, repo_full_name)        
         response = Contents.find(path, repo_full_name)
 
-        response.first
+        klass = response.first
+        if !klass.is_a? File
+          raise StandardError, "#{path} is a #{klass._payload["type"]}"
+        end
+
+        if klass.path != path
+          raise StandardError, "Something went horribly wrong. #{klass.path} does not match #{path}..."
+        end
+
+        klass
       end
 
       def update(contents, branch: nil)

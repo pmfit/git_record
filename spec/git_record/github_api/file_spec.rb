@@ -28,10 +28,43 @@ RSpec.describe GitRecord::GithubApi::File do
         .to_return(
           status: 200,
           headers: { "Content-Type": "application/json" },
-          body: { "type": "file" }.to_json
+          body: { "type": "file", "path": "abc123" }.to_json
         )
 
       expect(described_class.find('abc123', "pmfit/git_record")).to be_a(described_class)
+    end
+
+    it 'raises an error when the path is not found' do
+      stub_request(:get, "https://api.github.com/repos/pmfit/git_record/contents/abc123")
+        .to_return(
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+          body: { "message": "Not found" }.to_json
+        )
+
+      expect { described_class.find('abc123', "pmfit/git_record") }.to raise_error(StandardError, 'Not found')
+    end
+
+    it 'raises an error when the found path is not a file' do
+      stub_request(:get, "https://api.github.com/repos/pmfit/git_record/contents/abc123")
+        .to_return(
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+          body: [{ "type": "dir" }].to_json
+        )
+
+      expect { described_class.find('abc123', "pmfit/git_record") }.to raise_error(StandardError, 'abc123 is a dir')
+    end
+
+    it 'raises an error when the found file does not match the requested file' do
+      stub_request(:get, "https://api.github.com/repos/pmfit/git_record/contents/abc123")
+        .to_return(
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+          body: { "type": "file", path: "123abc" }.to_json
+        )
+
+      expect { described_class.find('abc123', "pmfit/git_record") }.to raise_error(StandardError, 'Something went horribly wrong. 123abc does not match abc123...')
     end
 
     it 'raises an error when it fails' do
