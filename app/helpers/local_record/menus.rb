@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module LocalRecord
+module GitRecord
   module Menus
     def menus(document_model)
       raise ArgumentError, 'No document model was provided' if document_model.blank?

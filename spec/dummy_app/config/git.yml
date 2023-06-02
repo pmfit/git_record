@@ -1,0 +1,5 @@
+github:
+  repo: pmfit/git_record
+  access_token: <%= ENV.fetch("GITHUB_ACCESS_TOKEN") %>
+commit:
+  create: created file <%%= path %>
