@@ -26,23 +26,23 @@ module GitRecord
 
         self._payload = payload
 
-        @content = payload[:content]
+        @content = payload["content"]
       end
 
       def self.create(path, repo_full_name, contents, branch: nil)
         content_base64 = Base64.encode64(contents)
 
-        payload = {
+        body = {
           message: GitRecord::CommitTemplate.new(GitRecord.configuration.commit[:create], { path: path }).render,
           content: content_base64.gsub("\n", ''),
         }
-        payload[:branch] = branch if branch.present?
+        body[:branch] = branch if branch.present?
 
         url = "/repos/#{repo_full_name}/contents/#{path}"
 
-        response_payload = self.client.put(url, JSON.generate(payload))
+        payload = self.client.put(url, body.to_json)
         
-        new(**response_payload)
+        new(**payload)
       end
 
       def self.find(path, repo_full_name)        
@@ -63,29 +63,29 @@ module GitRecord
       def update(contents, branch: nil)
         content_base64 = Base64.encode64(contents)
 
-        payload = {
-          message: GitRecord::CommitTemplate.new(GitRecord.configuration.commit[:create], self.to_h).render,
+        body = {
+          message: GitRecord::CommitTemplate.new(GitRecord.configuration.commit[:update], serializable_hash).render,
           content: content_base64.gsub("\n", ''),
           sha: sha
         }
-        payload[:branch] = branch if branch.present?
+        body[:branch] = branch if branch.present?
       
-        response_payload = self.class.client.put(url, JSON.generate(payload))
+        payload = self.class.client.put(url, body.to_json)
         
-        self.class.new(**response_payload)
+        self.class.new(**payload)
       end
 
       def content
        return @content if @content.present?
 
-       full_file = self.find(path, repo_full_name)
+       full_file = self.class.find(path, repo_full_name)
 
        @content = full_file.content
 
        @content
       end
 
-      def raw_content
+      def decoded_content
         return Base64.decode64(content) if content.present?
 
         ''

@@ -12,12 +12,12 @@ module GitRecord
     initializer 'git_record.load' do
       ActiveSupport.on_load :action_view do
         ActionView::Template.register_template_handler(
-          'html.erb',
+          *['html.erb'],
           GitRecord::ErbTemplateHandler
         )
 
         ActionView::Template.register_template_handler(
-          'html.md',
+          *[:md, 'html.md'],
           GitRecord::MarkdownTemplateHandler
         )
       end

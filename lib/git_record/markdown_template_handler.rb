@@ -9,11 +9,10 @@ module GitRecord
 
     def self.call(template, source)
       parsed_source = FrontMatterParser::Parser.new(:md).call(source)
-      interpolated_template = ActionView::Template.new(parsed_source.content, template.identifier, template.handler,
-                                                       locals: OpenStruct.new(parsed_source.front_matter))
       safe_html = MarkdownParser.to_html(parsed_source.content)
+      erb_template = ActionView::Template.new(safe_html, 'virtual.erb', ActionView::Template.handler_for_extension(:erb), locals: OpenStruct.new(parsed_source.front_matter))
 
-      erb.call(interpolated_template, safe_html)
+      erb.call(erb_template, safe_html)
     end
   end
 end

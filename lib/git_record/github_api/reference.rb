@@ -29,6 +29,33 @@ module GitRecord
         self.new(**payload)
       end
 
+      def self.create(ref, sha, repo_full_name)
+        body = {
+          ref:,
+          sha:
+        }
+        payload = self.client.post("/repos/#{repo_full_name}/git/refs", body.to_json)
+
+        self.new(**payload)
+      end
+
+      def update(sha, force: false)
+        body = {
+          sha:
+        }
+        body[:force] = true if force
+
+        payload = self.class.client.patch("/repos/#{repo_full_name}/git/#{ref}", body.to_json)
+
+        self.class.new(**payload)
+      end
+
+      def destroy
+        payload = self.class.client.delete("/repos/#{repo_full_name}/git/#{ref}")
+
+        return payload.success?
+      end
+
       def commit
         Commit.find(sha, repo_full_name)
       end

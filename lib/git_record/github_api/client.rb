@@ -5,8 +5,6 @@ module GitRecord
     class RestClient
       include HTTParty
 
-      debug_output $stdout
-
       base_uri 'https://api.github.com'
 
       def initialize(options)
@@ -32,13 +30,13 @@ module GitRecord
       end
 
       def patch(url, body, headers: {})
-        response = self.class.patch(url, body: body, headers: allowed_headers(allowed_headers))
+        response = self.class.patch(url, body: body, headers: allowed_headers(headers))
 
         handle_response(response)
       end
 
       def delete(url, headers: {})
-        response = self.class.delete(url, headers: allowed_headers(allowed_headers))
+        response = self.class.delete(url, headers: allowed_headers(headers))
 
         handle_response(response)
       end

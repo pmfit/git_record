@@ -1,37 +1,42 @@
 # frozen_string_literal: true
+require 'front_matter_parser'
+
 module GitRecord
-  class Local < Base
+  class Local < BaseDocument
+    attribute :view, :string
+
+    define_model_callbacks :initialize
+
+    validate :valid_menus?
+
+    def initialize(attributes = {})
+      super(**attributes)
+
+      run_callbacks :initialize do
+        raise StandardError, errors unless valid?
+
+        attribute_names.each do |name|
+          next if [:path, :slug, :view, :front_matter, :raw].include? name.to_sym
+
+          self.send("#{name}=", front_matter[name])
+        end
+      end
+    end
+
     def self.all
       pages
         .lazy
-        .map do |file_path|
-        content = File.read(file_path)
-        parsed = FrontMatterParser::Parser.new(:md).call(content)
-        relative_path = file_path.gsub("#{content_directory}/", '')
-        slug = relative_path
-               .gsub(".html#{File.extname(file_path)}", '')
-               .gsub(File.extname(file_path), '')
-               .gsub(%r{/index$}, '')
-               .gsub(%r{^/}, '')
-        view = relative_path
-               .gsub(Rails.root.join('app/views').to_s, '')
-               .gsub(".html#{File.extname(file_path)}", '')
-               .gsub(File.extname(file_path), '')
-
-        new(
-          file_path: relative_path,
-          slug:,
-          view:,
-          front_matter: JSON.parse(parsed.front_matter.to_json, object_class: OpenStruct),
-          raw: parsed.content
-        )
+        .map do |path|
+          file = File.new(path, 'r')
+        
+          file_to_record(file)
       end
   end
 
     def self.find(slug)
       document = all.find { |document| potential_files(slug).include?(document.slug) }
 
-      raise ActiveRecord::RecordNotFound, "#{slug} document not found" if document.blank?
+      raise StandardError, "#{slug} document not found" if document.blank?
 
       document
     end
@@ -60,6 +65,30 @@ module GitRecord
     end
 
     protected
+
+    def self.file_to_record(file)
+      content = file.read
+      parsed = FrontMatterParser::Parser.new(:md).call(content)
+      relative_path = file.path.gsub("#{content_directory}/", '')
+      slug = relative_path
+             .gsub(".html#{File.extname(file.path)}", '')
+             .gsub(File.extname(file.path), '')
+             .gsub(%r{/index$}, '')
+             .gsub(%r{^/}, '')
+      view = relative_path
+             .gsub(Rails.root.join('app/views').to_s, '')
+             .gsub(".html#{File.extname(file.path)}", '')
+             .gsub(File.extname(file.path), '')
+
+      self.new(
+        path: file.path,
+        slug:,
+        view:,
+        content:,
+        front_matter: parsed.front_matter,
+        raw_body: parsed.content
+      )
+    end
 
     def self.pages
       Dir.glob(pages_glob)

@@ -5,6 +5,7 @@ module GitRecord
     class Base
       include ActiveModel::API
       include ActiveModel::Attributes
+      include ActiveModel::Serialization
 
       def initialize(attrs)
         super(attrs)

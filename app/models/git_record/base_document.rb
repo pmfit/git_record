@@ -1,32 +1,29 @@
 # frozen_string_literal: true
-require 'front_matter_parser'
 require "git_record/markdown_parser"
 
 module GitRecord
-  class Base
+  class BaseDocument
     include ActiveModel::Model
     include ActiveModel::Attributes
 
-    define_model_callbacks :create, :update, :destroy, :initialize
+    define_model_callbacks :update, :destroy, :initialize
 
-    attribute :file_path, :string
+    attribute :path, :string
     attribute :slug, :string
-    attribute :view, :string
+    attribute :content, :string
     attribute :front_matter, default: {}
-    attribute :raw, :string
-
-    # validate :valid_menus
+    attribute :raw_body, :string
 
     after_initialize :get_file
 
-    def initialize(attributes = {})
+    def initialize(**attributes)
       super
 
       run_callbacks :initialize do
-        raise ActiveRecord::RecordInvalid, errors unless valid?
+        raise StandardError, errors unless valid?
 
         attribute_names.each do |name|
-          next if [:file_path, :slug, :view, :front_matter, :raw].include? name.to_sym
+          next if [:path, :slug, :content, :view, :front_matter, :raw_body].include? name.to_sym
 
           self.send("#{name}=", front_matter[name])
         end
@@ -44,12 +41,18 @@ module GitRecord
       end
     end
 
+    # YER A WIZARD, HARRY
     def body
-      if file_path.ends_with?('.md')
-        template = ActionView::Template.new(raw, nil, nil, locals: {})
-        output = GitRecord::MarkdownTemplateHandler.call(template, raw)
+      lookup_context = ActionView::LookupContext.new([])
+      view = ActionView::Base.with_empty_template_cache.new(lookup_context, {}, nil)
 
-        output
+      if path.ends_with?(*lookup_context.handlers.map(&:to_s))
+        ext = File.extname(path).gsub(/^./, '')
+        template = ActionView::Template.new(content, path, ActionView::Template.handler_for_extension(ext.to_sym), locals: [])
+        
+        view.render template: template
+      else
+        raw_body
       end
     end
 
@@ -101,7 +104,7 @@ module GitRecord
       OpenStruct.new(menus)
     end
 
-    def valid_menus
+    def valid_menus?
       return false if front_matter.menus.blank?
       return false unless front_matter.menus.is_a? Array
 
@@ -114,6 +117,12 @@ module GitRecord
 
     def to_param
       slug
+    end
+
+    protected
+
+    def self.provider
+      :github
     end
   end
 end

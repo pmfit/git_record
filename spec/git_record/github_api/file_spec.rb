@@ -102,4 +102,32 @@ RSpec.describe GitRecord::GithubApi::File do
       expect { described_class.create("abc123", "pmfit/git_record", "content") }.to raise_error(StandardError, "Something went wrong")
     end
   end
+
+  describe '#update' do
+    it 'returns the updated file' do
+      file = described_class.new(url: "https://api.github.com/repos/pmfit/git_record/contents/abc123")
+
+      stub_request(:put, "https://api.github.com/repos/pmfit/git_record/contents/abc123")
+        .to_return(
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+          body: { "type": "file", "content": "abc123" }.to_json
+        )
+
+      expect(file.update('abc123').content).to eq("abc123")
+    end
+
+    it 'raises an error when it fails' do
+      file = described_class.new(url: "https://api.github.com/repos/pmfit/git_record/contents/abc123")
+
+      stub_request(:put, "https://api.github.com/repos/pmfit/git_record/contents/abc123")
+        .to_return(
+          status: 417,
+          headers: { "Content-Type": "application/json" },
+          body: { "message": "Something went wrong" }.to_json
+        )
+
+      expect { file.update("abc123") }.to raise_error(StandardError, "Something went wrong")
+    end
+  end
 end
