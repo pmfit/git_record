@@ -59,6 +59,10 @@ module GitRecord
       def commit
         Commit.find(sha, repo_full_name)
       end
+
+      def tree(recursive: false)
+        Tree.find(sha, repo_full_name, recursive: recursive)
+      end
     end
   end
 end

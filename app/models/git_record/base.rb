@@ -2,7 +2,7 @@
 require 'front_matter_parser'
 
 module GitRecord
-  class Local < BaseDocument
+  class Base < BaseDocument
     attribute :view, :string
 
     define_model_callbacks :initialize
@@ -25,7 +25,6 @@ module GitRecord
 
     def self.all
       pages
-        .lazy
         .map do |path|
           file = File.new(path, 'r')
         
@@ -84,7 +83,6 @@ module GitRecord
         path: file.path,
         slug:,
         view:,
-        content:,
         front_matter: parsed.front_matter,
         raw_body: parsed.content
       )

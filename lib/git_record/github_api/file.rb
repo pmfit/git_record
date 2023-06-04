@@ -45,8 +45,8 @@ module GitRecord
         new(**payload)
       end
 
-      def self.find(path, repo_full_name)        
-        response = Contents.find(path, repo_full_name)
+      def self.find(path, repo_full_name, branch: nil)        
+        response = Contents.find(path, repo_full_name, ref: branch)
 
         klass = response.first
         if !klass.is_a? File

@@ -15,32 +15,36 @@ module GitRecord
       attribute :_payload, :hash
 
       def initialize(**payload)
+
         attributes = payload.reject{ |k,v| !Tree.attribute_names.include?(k.to_s) }
 
         super(attributes)
 
         self._payload = payload
+        
+        @tree = payload["tree"]
       end
 
       def self.find(sha, repo_full_name, recursive: false)
-        url = URI("/repos/#{repo_full_name}/git/trees/#{sha}")        
-        url.query[:recursive] = true if recursive
+        uri = URI("/repos/#{repo_full_name}/git/trees/#{sha}")        
+        uri.query = "recursive=true" if recursive
+        url = uri.to_s
 
-        payload = self.client.get(url.path)
+        payload = self.client.get(url)
         payload[:repo_full_name] = repo_full_name
 
-        self.new(**payload)
+        self.new(**payload, tree: payload["tree"])
       end
 
       def self.create(tree, repo_full_name, base_tree: nil)
         body = {
-          tree:
+          tree:,
         }
         body[:base_tree] = base_tree if base_tree.present?
 
         payload = self.client.post("/repos/#{repo_full_name}/git/trees", body.to_json)
 
-        self.new(**payload)
+        self.new(**payload, tree: payload["tree"])
       end
 
       def contents
@@ -52,8 +56,7 @@ module GitRecord
       end
 
       def add_file(path, content)
-        @tree ||= []
-        @tree.push({
+        add_item({
           path:,
           content:,
           mode: '100644',
@@ -62,8 +65,7 @@ module GitRecord
       end
 
       def add_executable(path, content)
-        @tree ||= []
-        @tree.push({
+        add_item({
           path:,
           content:,
           mode: '100755',
@@ -72,8 +74,7 @@ module GitRecord
       end
 
       def add_directory
-        @tree ||= []
-        @tree.push({
+        add_item({
           path:,
           content:,
           mode: '040000',
@@ -86,6 +87,20 @@ module GitRecord
           self.class.create(@tree, repo_full_name, base_tree: sha)
         else
           raise StandardError, 'Please construct a new tree'
+        end
+      end
+
+      private
+
+      def add_item(item)
+        @tree ||= []
+
+        index = @tree.find_index { |i| i[:path] = item[:path] }
+
+        if index.present? && index > -1
+          @tree[index,1] = item
+        else
+          @tree.push(item)
         end
       end
     end

@@ -17,6 +17,7 @@ module GitRecord
       attribute :name, :string
       attribute :full_name, :string
       attribute :description, :string
+      attribute :default_branch, :string
       attribute :url, :string
 
       attribute :_payload, :hash, default: {}

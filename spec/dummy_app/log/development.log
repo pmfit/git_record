@@ -74,3 +74,5 @@ Unknown contents: dir
   Rendered README.md (Duration: 160.1ms | Allocations: 243762)
   Rendering README.md
   Rendered README.md (Duration: 19.9ms | Allocations: 7867)
+  Rendering test.md
+  Rendered test.md (Duration: 22.1ms | Allocations: 7991)

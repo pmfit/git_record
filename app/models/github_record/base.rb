@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 require 'front_matter_parser'
 
-module GitRecord
-  class Github < BaseDocument
+module GithubRecord
+  class Base < BaseDocument
     define_model_callbacks :create, :update, :destroy, :initialize
 
     def initialize(attributes = {})
@@ -11,43 +11,41 @@ module GitRecord
       super(**attributes)
     end
 
-    def self.all
-      results = GitRecord::GithubApi::Contents.find("/", repo_full_name)
-      files = results.filter { |result| result.is_a?(GithubApi::File) }
-
-      files.lazy.map(&:file_to_record)
+    def self.all(branch: nil)
+      query(branch:).eager
     end
 
-    def self.find(path)
-      file = GitRecord::GithubApi::File.find(path, repo_full_name)
+    def self.find(path, branch: nil)
+      file = GitRecord::GithubApi::File.find(path, repo_full_name, branch: branch)
 
       file_to_record(file)
     end
 
-    def self.find_by(**attributes)
-      file = all.find do |result|
-        return false unless result.is_a?(GithubApi::File)
-
-        attributes.each do |key, value|
-          return false unless result.send(key).include? value
-        end
-      end
-
-      file_to_record(file) if file.present?
+    def self.find_by(branch: nil, **attributes)
+      where(**attributes).first
     end
 
-    def self.where(**attributes)
-      files = all.filter do |result|
-        return false unless result.is_a?(GithubApi::File)
+    def self.where(branch: nil, **attributes)
+      query(branch:).filter do |document|
+        keys = attributes.keys
 
-        attributes.each do |key, value|
-          return false unless result.send(key).include? value
+        matches = keys.filter do |key|
+          document_value = if key == :slug
+                             document.slug
+                           else
+                             document.send(key)
+                           end
+          attribute = attributes[key]
+
+          if attribute.methods.include?(:call)
+            attribute.call(document_value)
+          else
+            attribute == document_value
+          end
         end
 
-        true
+        matches.length == keys.length
       end
-
-      files.map(&:file_to_record) if files.present?
     end
 
     def self.create(path, content: nil, **attributes)
@@ -62,15 +60,17 @@ module GitRecord
         contents += "#{content}\n"
       end
 
-      GithubApi::File.create(path, repo_full_name, contents)
+      GitRecord::GithubApi::File.create(path, repo_full_name, contents)
 
-      return true
-    rescue
-      return false
+      true
+    rescue StandardError => e
+      errors.add(:base, e.message)
+
+      false
     end
 
     def create!(**attrs)
-      raise StandardError, 'Failed to create' unless create(**attrs)
+      raise StandardError, errors(:base) || 'Failed to create' unless create(**attrs)
     end
 
     def update(content: nil, **attributes)
@@ -91,13 +91,30 @@ module GitRecord
       end
 
       @file.update(contents)
+
+      true
+    rescue StandardError => e
+      errors.add(:base, e.message)
+
+      false
     end
 
     def update!(**attrs)
-      raise StandardError, 'Failed to update' unless update(**attrs)
+      raise StandardError, errors(:base) || 'Failed to update' unless update(**attrs)
     end
 
     protected
+
+    def self.query(branch: nil)
+      repo = GitRecord::GithubApi::Repository.find(repo_full_name)
+      tree = repo.branch(branch || repo.default_branch).tree(recursive: true)
+      files = tree.contents
+        .lazy
+        .filter { |content| content["type"] == "blob" }
+        .map { |content| GitRecord::GithubApi::File.find(content["path"], repo_full_name) }
+
+      files.map { |file| file_to_record(file) }
+    end
 
     def self.file_to_record(file)
       file_type = File.extname(file.path).gsub(/^./, '')
@@ -107,11 +124,10 @@ module GitRecord
         .gsub(%r{/index$}, '')
         .gsub(%r{^/}, '')
       parsed = FrontMatterParser::Parser.new(file_type.to_sym).call(file.decoded_content) if file.decoded_content.present?
-      
+
       self.new(
         path: file.path,
         slug:,
-        content: file.decoded_content,
         front_matter: parsed.front_matter,
         raw_body: parsed.content,
         file: file
